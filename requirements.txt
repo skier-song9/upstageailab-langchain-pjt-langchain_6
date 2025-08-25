@@ -1,0 +1,7 @@
+psycopg2-binary
+arxiv 
+requests
+locales
+postgresql-16
+postgresql-client-16
+postgresql-16-pgvector
