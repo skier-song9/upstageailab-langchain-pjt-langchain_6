@@ -38,3 +38,13 @@ gradio
 streamlit
 fastapi
 requests
+
+psycopg2-binary
+arxiv 
+requests
+locales
+
+# postgresql-16버전을 다운받기 위해서는 노션 참고
+postgresql-16
+postgresql-client-16
+postgresql-16-pgvector
