@@ -175,3 +175,18 @@ pyrightconfig.json
 
 # End of https://www.toptal.com/developers/gitignore/api/python
 *.csv
+
+### Custom Ignores ###
+
+# Logging
+logs/
+
+# PostgreSQL
+pgdata/
+.s.PGSQL.*
+
+# LangChain, LangSmith, HuggingFace, LangGraph
+.langchain/
+.langsmith/
+.huggingface_cache/
+
