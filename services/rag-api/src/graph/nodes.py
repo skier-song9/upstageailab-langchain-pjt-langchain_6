@@ -5,11 +5,21 @@ from ..core.retriever import mock_rag_retrieval
 from ..core.llm import mock_llm_generate
 
 def select_paper_node(state: GraphState):
-    """:param state: The current graph state. :return: New state with DB query result."""
+    """
+    사용자가 읽은 논문에 대한 키워드가 state['from_paper']로 전달된다.
+    1. DB에서 해당 논문이 존재하는지 찾는다.
+    2. 논문이 존재한다면 해당 논문의 full title을 state['sbp_title']에 저장하고 state['sbp_found]
+    
+    :param GraphState state: The current graph state. 
+    :return dict: New state with DB query result.
+    """
     print("\n--- 노드 실행: select_paper_node ---")
     query = state["initial_query"]
     paper_info = mock_db_select(query)
     
+    # web search
+    
+
     if paper_info and paper_info["is_sbp"]:
         return {"sbp_found": True, "sbp_title": paper_info["title"]}
     else:

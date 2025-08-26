@@ -1,6 +1,13 @@
 def mock_db_select(paper_title: str) -> dict | None:
-    """DB에서 논문을 조회하는 모의 함수. 'Graph RAG' 논문만 찾을 수 있다고 가정합니다."""
+    """DB에서 논문을 조회하는 함수. 기본적으로 "논문의 제목"을 바탕으로 일치하는 논문을 찾는 로직으로 구현한다.
+    (사용자가 읽은 논문이니 full title을 입력해줄 것으로 기대)
+
+    1. DB에서 일치하는 논문 또는 유사한 제목의 논문을 찾아 반환한다.
+    
+    :param paper_title str:
+    """
     print(f"📄 DB 조회: '{paper_title}'")
+    
     if "graph rag" in paper_title.lower():
         return {"title": "Graph RAG", "is_sbp": True, "details": "Graph RAG에 대한 상세 정보"}
     return None
