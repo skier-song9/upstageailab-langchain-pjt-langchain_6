@@ -1,9 +1,12 @@
-from util import get_json, OPENALEX, PER_PAGE, RPS_SLEEP, reconstruct_abstract
 import time
 import pandas as pd
 import os
+import sys
 
-ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ROOT_DIR = os.path.abspath(os.path.join(os.path.abspath(__file__), "..", ".."))
+sys.path.append(ROOT_DIR)
+
+from db.util import get_json, OPENALEX, PER_PAGE, RPS_SLEEP, reconstruct_abstract
 
 data_dir = os.path.join(ROOT_DIR, "data")
 
@@ -12,7 +15,7 @@ def search_works_by_keywords(
     filters: dict | None = None,
     max_records: int = 5000,
     use_cursor: bool = True,
-    select_fields: str = "id,display_name,publication_year,doi,cited_by_count,abstract_inverted_index,authorships,primary_location,referenced_works",
+    select_fields: str = "id,display_name,publication_date,doi,cited_by_count,abstract_inverted_index,authorships,primary_location,referenced_works",
     per_page: int = PER_PAGE,
     rps_sleep: float = RPS_SLEEP,
 ):
