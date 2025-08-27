@@ -1,8 +1,9 @@
 from .state import GraphState
 from ..core.database import mock_db_select, mock_db_insert, mock_db_follow_up_select
-from ..core.source_api import mock_web_search
+from ..core.source_api import openalex_search
 from ..core.retriever import mock_rag_retrieval
 from ..core.llm import mock_llm_generate
+from ..core.get_emb import get_emb_model, get_emb
 
 def select_paper_node(state: GraphState):
     """
@@ -17,28 +18,41 @@ def select_paper_node(state: GraphState):
     query = state["initial_query"]
     paper_info = mock_db_select(query)
     
-    # web search
-    
 
     if paper_info and paper_info["is_sbp"]:
-        return {"sbp_found": True, "sbp_title": paper_info["title"]}
+        return {"sbp_found": True, "sbp_title": paper_info["paper_meta"]["title"], "paper_search_result": paper_info["paper_meta"]}
     else:
         return {"sbp_found": False, "sbp_title": ""}
 
 def web_search_node(state: GraphState):
-    """:param state: The current graph state. :return: New state with web search result."""
+    """
+    :param state: The current graph state. 
+    :return: OpenAlex 검색 결과를 state에 저장하고 논문 제목으로 초기 쿼리 업데이트
+    """
+
     print("\n--- 노드 실행: web_search_node ---")
     query = state["initial_query"]
-    paper_info = mock_web_search(query)
-    return {}
+    paper_search_result = openalex_search(query)
+
+    return {"paper_search_result": paper_search_result,
+            "initial_query": paper_search_result["title"]} # 무한 루프 방지 위해 우선 논문 제목으로 초기 쿼리 업데이트 추후 수정 필요
 
 def insert_paper_node(state: GraphState):
-    """:param state: The current graph state. :return: An empty dictionary as it only performs an action."""
+    """
+    :param state: The current graph state. 
+    :return: 논문 정보를 DB에 저장
+    """
     print("\n--- 노드 실행: insert_paper_node ---")
-    query = state["initial_query"]
-    paper_info = mock_web_search(query)
+    paper_info = state["paper_search_result"]
+
+    # 논문 초록 임베딩
+    emb_model = get_emb_model()
+    embedding = get_emb(emb_model, [paper_info["abstract"]])
+    paper_info["embedding"] = embedding
+
     if paper_info:
         mock_db_insert(paper_info)
+
     return {}
     
 def retrieve_and_select_node(state: GraphState):
