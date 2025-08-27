@@ -33,7 +33,7 @@ def title_similarity(a: str, b: str) -> float:
     la = abs(len(a) - len(b)) / max(len(a), 1)
     return 0.85*sm - 0.15*la
 
-def reconstruct_abstract(abs_idx: dict) -> str:
+def reconstruct_abstract(abs_idx: dict | None) -> str:
     if not abs_idx: return ""
     pos = {}
     for w, idxs in abs_idx.items():
