@@ -1,5 +1,12 @@
 import gradio as gr
 import time
+from dotenv import load_dotenv
+import os
+import requests
+import json
+
+load_dotenv(dotenv_path="../../../.env", overried=True)
+RAG_API_URL = os.getenv("RAG_API_URL", "https://www.google.com/url?sa=E&source=gmail&q=http://127.0.0.1:8000")
 
 # --- Mock API Functions (향후 실제 rag-api 호출 코드로 대체) ---
 
@@ -56,6 +63,44 @@ def start_phase1(paper_query: str):
     :param paper_query: 검색할 논문 제목
     :return: Phase 1 결과에 따라 업데이트될 UI 컴포넌트들의 값
     """
+    try:
+        response = requests.post(f"{RAG_API_URL}", json={"query": paper_query})
+        response.raise_for_status() # HTTP 오류 발생 시 예외 발생
+        result = response.json()
+        thread_id = result.get("thread_id")
+        sbp_found = result.get("sbp_found")
+        sbp_title = result.get("sbp_title")
+        
+        if sbp_found:
+            return {
+                thread_id_state: thread_id,
+                searched_paper_state: sbp_title,
+                searched_paper_output: gr.update(
+                    value=f"✅ **Found Paper:** {sbp_title}\n\n이제 아래 채팅창에서 후속 연구에 대해 질문할 수 있습니다.", 
+                    visible=True
+                ),
+                phase2_ui_container: gr.update(visible=True)
+            }
+        else:
+            return {
+                thread_id_state: "",
+                searched_paper_state: "",
+                searched_paper_output: gr.update(
+                    value=f"❌ **Paper Not Found:** '{paper_query}'\n\nDB에 해당 논문이 없습니다.", 
+                    visible=True
+                ),
+                phase2_ui_container: gr.update(visible=False)
+            }
+    except requests.exceptions.RequestException as e:
+        error_message = f"API 호출 오류: {e}"
+        print(error_message)
+        return {
+            thread_id_state: "",
+            searched_paper_state: "",
+            searched_paper_output: gr.update(value=error_message, visible=True),
+            phase2_ui_container: gr.update(visible=False)
+        }
+
     paper_info = mock_phase1_api_call(paper_query)
     
     ### test를 위해 return True
@@ -70,32 +115,8 @@ def start_phase1(paper_query: str):
         phase2_ui_container: gr.update(visible=True)
     }
 
-    if paper_info:
-        # 논문 검색 성공
-        sbp_title = paper_info["title"]
-        
-        return {
-            searched_paper_state: sbp_title,
-            searched_paper_output: gr.update(
-                value=f"✅ **Found Paper:** {sbp_title}\n\n이제 아래 채팅창에서 후속 연구에 대해 질문할 수 있습니다.", 
-                visible=True
-            ),
-            # [수정됨] Phase 2 전체 UI 컨테이너를 보이게 함
-            phase2_ui_container: gr.update(visible=True)
-        }
-    else:
-        # 논문 검색 실패
-        return {
-            searched_paper_state: "",
-            searched_paper_output: gr.update(
-                value=f"❌ **Paper Not Found:** '{paper_query}'\n\nDB에 해당 논문이 없습니다. 다른 논문을 검색해주세요. (Try 'Graph RAG')",
-                visible=True
-            ),
-            # [수정됨] Phase 2 전체 UI 컨테이너를 숨김
-            phase2_ui_container: gr.update(visible=False)
-        }
 
-def start_phase2(message: str, history: list, sbp_title: str):
+def start_phase2(message: str, history: list, thread_id: str, sbp_title: str):
     """
     ChatInterface에서 채팅 입력 시 실행되어 Phase 2를 시작하는 함수입니다.
     :param message: 사용자가 입력한 메시지 (질문)
@@ -103,15 +124,39 @@ def start_phase2(message: str, history: list, sbp_title: str):
     :param sbp_title: Phase 1에서 검색되어 'searched_paper_state'에 저장된 논문 제목
     :return: 챗봇의 스트리밍 응답
     """
-    if not sbp_title:
+    if not thread_id or not sbp_title:
         return "오류: 먼저 논문을 검색해주세요."
-        
-    response_generator = mock_phase2_api_call(message, sbp_title, history)
-    yield from response_generator
+    
+    try: 
+        response = requests.post(
+            f"{RAG_API_URL}/start_phase2",
+            json={"thread_id": thread_id, "question": message, "sbp_title": sbp_title}
+            stream=True
+        )
+        response.raise_for_status()
+        full_response = ""
+        for line in response.iter_lines():
+            if line:
+                decoded_line = line.decode('utf-8')
+                if decoded_line.startswith('data:'):
+                    try:
+                        data_str = decoded_line[len('data:'):]
+                        data = json.loads(data_str)
+                        # 현재는 전체 답변을 한 번에 보내므로, 그대로 사용합니다.
+                        # LangGraph에서 청크 단위 스트리밍 시, 이 부분을 수정해야 합니다.
+                        full_response = data.get("answer_chunk", "")
+                        yield full_response
+                    except json.JSONDecodeError:
+                        print(f"JSON 디코딩 오류: {decoded_line}")
+                        continue
+    except requests.exceptions.RequestException as e:
+        yield f"API 호출 오류: {e}"
+
 
 # --- Gradio UI Layout ---
 
 with gr.Blocks(theme=gr.themes.Soft(), title="Paper Follow-up Researcher") as demo:
+    thread_id_state = gr.State("")
     searched_paper_state = gr.State("")
 
     gr.Markdown("# 📄 Paper Follow-up Researcher")
@@ -156,6 +201,7 @@ with gr.Blocks(theme=gr.themes.Soft(), title="Paper Follow-up Researcher") as de
         inputs=[paper_search_input],
         # [수정됨] outputs에 phase2_ui_container 추가
         outputs=[
+            thread_id_state,
             searched_paper_state, 
             searched_paper_output, 
             phase2_ui_container

@@ -2,8 +2,7 @@ from typing import TypedDict, List
 
 class GraphState(TypedDict):
     """Represents the state of our graph."""
-    initial_query: str
-    base_paper: str # 사용자가 읽은 논문
+    initial_query: str # 사용자가 입력한 논문 제목
     sbp_found: bool # sbp (selected base paper)
     sbp_title: str # full title of sbp
     retrieved_docs: List[str]
@@ -12,7 +11,8 @@ class GraphState(TypedDict):
 
 
     ### 송규헌 ###
-
+    thread_id: str # 각 대화 세션을 식별하는 ID
+    question: str # Phase 2 에서 사용자가 입력한 프롬프트
 
     ### 이나경 ###
 
