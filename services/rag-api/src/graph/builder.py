@@ -1,4 +1,5 @@
 from langgraph.graph import StateGraph, END
+from langgraph.checkpoint.memory import MemorySaver
 from .state import GraphState
 from .nodes import (
     select_paper_node,
@@ -10,6 +11,7 @@ from .nodes import (
 )
 
 def build_graph():
+    checkpointer = MemorySaver
     workflow = StateGraph(GraphState)
 
     workflow.add_node("select_paper", select_paper_node)
@@ -33,4 +35,8 @@ def build_graph():
         },
     )
 
-    return workflow.compile()
+    # Checkpointer와 함께 그래프를 컴파일하고, select_paper 이후에 중단점을 설정합니다.
+    return workflow.compile(
+        checkpointer=checkpointer,
+        interrupt_after=["select_paper"] # select_paper 노드 실행 후 사용자 입력을 위해 대기
+    )

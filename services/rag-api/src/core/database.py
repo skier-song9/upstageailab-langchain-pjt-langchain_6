@@ -7,7 +7,7 @@ def mock_db_select(paper_title: str) -> dict | None:
     :param paper_title str:
     """
     print(f"📄 DB 조회: '{paper_title}'")
-    
+
     if "graph rag" in paper_title.lower():
         return {"title": "Graph RAG", "is_sbp": True, "details": "Graph RAG에 대한 상세 정보"}
     return None
