@@ -4,6 +4,7 @@ import sys
 ROOT_DIR = os.path.abspath(os.path.join(os.path.abspath(__file__), "..", "..", "..", "..", ".."))
 print(ROOT_DIR)
 sys.path.append(ROOT_DIR)
+
 from db.meta_openalex import search_works_by_keywords
 from db.util import reconstruct_abstract
 
@@ -28,7 +29,7 @@ def openalex_search(paper_title: str) -> dict | None:
     "has_abstract":"true",
     "is_paratext":"false",
   }
-  select="id,display_name,publication_date,abstract_inverted_index,authorships"
+  select="id,display_name,publication_date,doi,cited_by_count,primary_location,abstract_inverted_index,authorships,referenced_works"
   r = search_works_by_keywords(
     query = paper_title,
     filters = filter,
@@ -43,15 +44,18 @@ def openalex_search(paper_title: str) -> dict | None:
 
   paper = r[0]  
   paper_info = {
-    "id": paper["id"].split("/")[-1],
+    "openalex_id": paper["id"].split("/")[-1],
     "title": paper["display_name"],
     "publication_date": paper["publication_date"],
+    "doi": paper["doi"],
+    "cited_by_count": paper["cited_by_count"],
+    "pdf_url": (paper.get("primary_location") or {}).get("pdf_url"),
     "abstract": reconstruct_abstract(paper["abstract_inverted_index"]),
-    "authors": [a["author"]["display_name"] for a in paper["authorships"]],
+    "authors": ", ".join([a["author"]["display_name"] for a in paper["authorships"]]),
+    "cited_papers": [ref["referenced_works"].split("/")[-1] for ref in paper["referenced_works"]],
   }
 
   return paper_info
-
 
 if __name__ == "__main__":
   openalex_search("Denoising sequence-to-sequence pre-training for natural language generation, translation, and comprehension")

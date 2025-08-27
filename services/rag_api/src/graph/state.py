@@ -3,14 +3,13 @@ from typing import TypedDict, List
 class GraphState(TypedDict):
     """Represents the state of our graph."""
     initial_query: str
-    base_paper: str # 사용자가 읽은 논문
     sbp_found: bool # sbp (selected base paper)
     sbp_title: str # full title of sbp
     retrieved_docs: List[str]
     answer: str
+
     ### 김정빈 ###
-
-
+    paper_search_result: dict | None
     ### 송규헌 ###
 
 
