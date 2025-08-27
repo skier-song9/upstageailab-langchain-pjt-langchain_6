@@ -7,6 +7,7 @@ import torch
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 data_dir = os.path.join(ROOT_DIR, "data")
+
 IN_CSV = os.path.join(data_dir, "papers.csv")
 OUT_NPY = os.path.join(data_dir, "papers_embeddings.npy")
 
@@ -148,3 +149,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    

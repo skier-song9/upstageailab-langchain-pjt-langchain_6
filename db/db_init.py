@@ -4,25 +4,17 @@ from psycopg2.extensions import connection as PGConnection
 from pgvector.psycopg2 import register_vector
 import pandas as pd
 import numpy as np
+from psycopg2.extras import execute_values
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 data_dir = os.path.join(ROOT_DIR, "data")
 
-# -----------------------------
-# 환경변수 (필요 시 .env 또는 러너 환경에 설정)
-# -----------------------------
-PGHOST = os.getenv("PGHOST", "/var/run/postgresql")
-PGPORT = int(os.getenv("PGPORT", "5432"))
-PGUSER = os.getenv("PGUSER", "postgres")
-PGPASSWORD = os.getenv("PGPASSWORD", "postgres")
-PGDATABASE = os.getenv("PGDATABASE", "postgres")
 
 # 임베딩 차원(스키마 고정값). 모델 바꾸면 여기만 수정.
 EMBED_DIM = int(os.getenv("EMBED_DIM", "1024"))
 
 # 벡터 인덱스 lists 파라미터 (데이터가 많을수록 크게)
 IVF_LISTS = int(os.getenv("PGVECTOR_IVF_LISTS", "100"))
-
 
 # -----------------------------
 # DDL (스키마 정의)
@@ -79,6 +71,13 @@ def get_conn() -> PGConnection:
     """
     PostgreSQL 커넥션 생성 + pgvector 어댑터 등록.
     """
+
+    PGHOST = os.getenv("PGHOST", "/var/run/postgresql")
+    PGPORT = int(os.getenv("PGPORT", "5432"))
+    PGUSER = os.getenv("PGUSER", "postgres")
+    PGPASSWORD = os.getenv("PGPASSWORD", "postgres")
+    PGDATABASE = os.getenv("PGDATABASE", "postgres")
+
     conn = psycopg2.connect(
         host=PGHOST, port=PGPORT, user=PGUSER, password=PGPASSWORD, dbname=PGDATABASE
     )
@@ -111,9 +110,6 @@ def init_db(conn: PGConnection, *, with_ivf_index: bool = True) -> None:
             CREATE INDEX IF NOT EXISTS idx_papers_openalex_id ON papers(openalex_id);
         """)
         cur.execute("""
-            CREATE INDEX IF NOT EXISTS idx_papers_doi ON papers(doi);
-        """)
-        cur.execute("""
             CREATE INDEX IF NOT EXISTS idx_citations_paper ON citations(citing_openalex_id);
         """)
         cur.execute("""
@@ -129,27 +125,38 @@ def init_db(conn: PGConnection, *, with_ivf_index: bool = True) -> None:
     register_vector(conn)  # pgvector 컬럼에 파이썬 배열 바인딩 지원
 
 def insert_papers(conn: PGConnection, meta_df: pd.DataFrame, emb_npy: np.ndarray) -> None:
-    """
-    논문 메타데이터를 테이블에 삽입
-    """
+    rows = []
+    for idx, row in meta_df.iterrows():
+        embedding = emb_npy[idx].tolist()
+        rows.append((
+            row["openalex_id"],
+            row["doi"],
+            row["title"],
+            row["abstract"],
+            row["authors"],
+            row["pdf_url"],
+            row["publication_date"],
+            row["cited_by_count"],
+            embedding
+        ))
     with conn.cursor() as cur:
-        for idx, row in meta_df.iterrows():
-            embedding = emb_npy[idx].tolist()
-            cur.execute("""
-                INSERT INTO papers (openalex_id, doi, title, abstract, authors, pdf_url, published, cited_by_count, embedding)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """, (row["openalex_id"], row["doi"], row["title"], row["abstract"], row["authors"], row["pdf_url"], row["publication_date"], row["cited_by_count"], embedding))
+        execute_values(cur, """
+            INSERT INTO papers (
+                openalex_id, doi, title, abstract, authors, pdf_url, published, cited_by_count, embedding
+            ) VALUES %s
+            ON CONFLICT (openalex_id) DO NOTHING
+        """, rows, page_size=500)   # page_size는 상황에 맞게 (500~1000 권장)
+    conn.commit()
     
+
 def insert_citations(conn: PGConnection, citations_df: pd.DataFrame) -> None:
-    """
-    인용 관계를 테이블에 삽입
-    """
+    rows = list(citations_df[["citing_paper_id", "cited_paper_id"]].itertuples(index=False, name=None))
     with conn.cursor() as cur:
-        for idx, row in citations_df.iterrows():
-            cur.execute("""
-                INSERT INTO citations (citing_openalex_id, cited_openalex_id)
-                VALUES (%s, %s)
-            """, (row["citing_paper_id"], row["cited_paper_id"]))
+        execute_values(cur, """
+            INSERT INTO citations (citing_openalex_id, cited_openalex_id)
+            VALUES %s
+            ON CONFLICT DO NOTHING
+        """, rows, page_size=1000)
     conn.commit()
 
 # -----------------------------
@@ -178,7 +185,7 @@ def reindex_vector(conn: PGConnection, lists: int) -> None:
 if __name__ == "__main__":
     conn = get_conn()
     init_db(conn = conn, with_ivf_index=True)
-    print("DB 초기화 완료")
+    print("테이블 초기화 완료")
 
     meta_df = pd.read_csv(os.path.join(data_dir, "papers.csv"))
     emb_npy = np.load(os.path.join(data_dir, "papers_embeddings.npy"))
