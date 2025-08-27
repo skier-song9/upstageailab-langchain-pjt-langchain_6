@@ -39,8 +39,8 @@ def build_graph():
 
 
     model = get_emb_model() # 임베딩 모델 로드(캐시 적용되어 이후 노드들에서는 로드 X)
+
     # Checkpointer와 함께 그래프를 컴파일하고, select_paper 이후에 중단점을 설정합니다.
-    
     return workflow.compile(
         checkpointer=checkpointer,
         interrupt_after=["select_paper"] # select_paper 노드 실행 후 사용자 입력을 위해 대기
