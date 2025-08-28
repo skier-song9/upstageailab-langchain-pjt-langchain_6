@@ -31,6 +31,7 @@ upstageailab-langchain-pjt-langchain_6/
 │           └── core/
 │               ├── __init__.py
 │               ├── database.py
+│               ├── get_emb.py
 │               ├── llm.py
 │               ├── retriever.py
 │               └── source_api.py
@@ -40,9 +41,18 @@ upstageailab-langchain-pjt-langchain_6/
 │       ├── __init__.py
 │       └── models.py
 │
+├── webapp
+│   ├── Dockerfile
+│   ├── requirements.txt
+│   └── src/
+│       ├── __init__.py
+│       ├── app.py
+│       └── chat_history.py
+│
 ├── .env
 ├── .gitignore
 ├── docker-compose.yml
+├── requirements.txt
 └── README.md
 
 #### Descriptions
