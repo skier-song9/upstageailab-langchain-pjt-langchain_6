@@ -1,4 +1,5 @@
 from langchain_core.documents import Document
+from langchain_core.messages import BaseMessage, HumanMessage
 from typing import List
 
 # 예시 데이터 (사용자 제공 RealDictRow와 유사한 형태)
@@ -31,3 +32,12 @@ def convert_to_documents(results: List[dict]) -> List[Document]:
         documents.append(doc)
     
     return documents
+
+def get_last_user_query(messages: List[BaseMessage]) -> str:
+    """
+    Get the last user query from the messages.
+    """
+    for message in reversed(messages):
+        if isinstance(message, HumanMessage):
+            return message.content
+    return ""

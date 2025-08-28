@@ -1,16 +1,24 @@
+import os
+import sys
+
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", ".."))
+sys.path.append(ROOT_DIR)
+
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
-from .state import GraphState
-from .nodes import (
+from services.rag_api.src.graph.state import GraphState
+from services.rag_api.src.graph.nodes import (
     select_paper_node,
     web_search_node,
     insert_paper_node,
     retrieve_and_select_node,
     generate_answer_node,
     should_search_web,
+    rag_judge_node,
+    rag_condition,
 )
 
-from ..core.get_emb import get_emb_model
+from services.rag_api.src.core.get_emb import get_emb_model
 
 def build_graph():
     checkpointer = MemorySaver()
@@ -21,7 +29,8 @@ def build_graph():
     workflow.add_node("insert_paper", insert_paper_node)
     workflow.add_node("retrieve_and_select", retrieve_and_select_node)
     workflow.add_node("generate_answer", generate_answer_node)
-
+    workflow.add_node("rag_judge", rag_judge_node)
+    
     workflow.set_entry_point("select_paper")
     workflow.add_edge("web_search", "insert_paper")
     workflow.add_edge("insert_paper", "select_paper")
@@ -33,7 +42,16 @@ def build_graph():
         should_search_web,
         {
             "web_search": "web_search",
-            "retrieve_and_select": "retrieve_and_select",
+            "rag_judge": "rag_judge",
+        },
+    )
+
+    workflow.add_conditional_edges(
+        "rag_judge",
+        rag_condition,
+        {
+          "retrieve_and_select": "retrieve_and_select",
+          "generate_answer": "generate_answer",
         },
     )
 
@@ -45,3 +63,7 @@ def build_graph():
         checkpointer=checkpointer
         # interrupt_after=["select_paper"] # select_paper 노드 실행 후 사용자 입력을 위해 대기
     )
+
+if __name__ == "__main__":
+    graph = build_graph()
+    graph.get_graph().draw_png("graph.png")

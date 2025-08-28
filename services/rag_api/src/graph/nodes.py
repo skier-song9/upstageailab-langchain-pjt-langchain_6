@@ -1,11 +1,18 @@
+from dotenv import load_dotenv
+import os
+from langchain_core.messages import HumanMessage
+
+
 from .state import GraphState
 from ..core.database import mock_db_select, mock_db_insert, mock_db_follow_up_select
 from ..core.source_api import openalex_search
 from ..core.retriever import UPSTAGE_API_KEY, TAVILY_SEARCH, augment_prompt
-from ..core.llm import mock_llm_generate
+from ..core.llm import mock_llm_generate, rag_judge, mock_llm_generate_no_rag
 from ..core.get_emb import get_emb_model, get_emb
 from langgraph.types import interrupt
-from ..util import convert_to_documents
+from ..util import convert_to_documents, get_last_user_query
+
+load_dotenv()
 
 def select_paper_node(state: GraphState):
     """
@@ -24,12 +31,14 @@ def select_paper_node(state: GraphState):
 
     if not state.get("is_chat_mode"):
         value = interrupt({"paper_info": paper_info})
+        print(f"state: {state}")
 
         if paper_info and paper_info["is_sbp"]:
             return {"sbp_found": True, "sbp_title": paper_info["paper_meta"]["title"], "paper_search_result": paper_info["paper_meta"]}
         else:
             return {"sbp_found": False, "sbp_title": ""}
     else:
+        print(f"state: {state}")
         return {"paper_search_result": paper_info["paper_meta"]}
 
     # if paper_info and paper_info["is_sbp"]:
@@ -67,6 +76,16 @@ def insert_paper_node(state: GraphState):
         mock_db_insert(paper_info)
 
     return {}
+
+def rag_judge_node(state: GraphState):
+    """
+    :param state: The current graph state. 
+    :return: 논문 초록 임베딩과 사용자 질문 임베딩 간 유사도를 계산하여 임계값을 넘으면 논문 초록 임베딩을 사용하고, 넘지 않으면 사용자 질문 임베딩을 사용한다.
+    """
+    print("\n--- 노드 실행: rag_judge_node ---")
+    question = state["question"]
+    judgement = rag_judge(question, os.getenv("UPSTAGE_API_KEY"))
+    return {"rag_judgement": judgement}
     
 def retrieve_and_select_node(state: GraphState):
     """:param state: The current graph state. :return: New state with retrieved documents."""
@@ -78,8 +97,9 @@ def retrieve_and_select_node(state: GraphState):
         state['question'] = augmented_question # update state 
 
     paper_info = state["paper_search_result"]
-    query_vec = get_emb(get_emb_model(), [state["question"]])[0]
-    k = 10
+    last_user_query = get_last_user_query(state["messages"])
+    query_vec = get_emb(get_emb_model(), [last_user_query])[0]
+    k = 5
     db_follow_up_docs = mock_db_follow_up_select(paper_info, query_vec, k)
 
     all_docs = convert_to_documents(db_follow_up_docs)
@@ -89,16 +109,31 @@ def generate_answer_node(state: GraphState):
     """:param state: The current graph state. :return: New state with the final answer."""
     print("\n--- 노드 실행: generate_answer_node ---")
     question = state["question"]
-    context = state["retrieved_docs"]
-    answer = mock_llm_generate(question, context, llm_api_key = "up_5InQ6X4BcFE1rBXENeVywmNZnIFC1")
-    return {"answer": answer}
+    messages = state["messages"]
+    
+    print(f"\n\nstate['rag_judgement']: {state['rag_judgement']}\n\n")
+
+    if state["rag_judgement"] == "RAG":
+        context = state["retrieved_docs"]
+        answer = mock_llm_generate(messages, context, llm_api_key = os.getenv("UPSTAGE_API_KEY"))
+    else:
+        answer = mock_llm_generate_no_rag(messages, llm_api_key = os.getenv("UPSTAGE_API_KEY"))
+    return {"messages": [answer]}
 
 def should_search_web(state: GraphState) -> str:
     """:param state: The current graph state. :return: The name of the next node to call."""
     print("\n--- 조건 분기: should_search_web ---")
     if state["sbp_found"]:
         print("✅ SBP 발견! Phase 2로 진행합니다.")
-        return "retrieve_and_select"
+        return "rag_judge"
     else:
         print("❌ SBP 미발견. 웹 검색을 시작합니다.")
         return "web_search"
+
+def rag_condition(state: GraphState) -> str:
+    """:param state: The current graph state. :return: The name of the next node to call."""
+    print("\n--- 조건 분기: rag_condition ---")
+    if state["rag_judgement"] == "RAG":
+        return "retrieve_and_select"
+    else:
+        return "generate_answer"
