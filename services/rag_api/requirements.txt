@@ -33,6 +33,8 @@ langgraph
 langsmith
 langserve[all]
 langchain-teddynote
+tavily-python
+langchain_tavily
 
 gradio
 streamlit
