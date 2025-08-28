@@ -5,6 +5,7 @@ from ..core.retriever import mock_rag_retrieval
 from ..core.llm import mock_llm_generate
 from ..core.get_emb import get_emb_model, get_emb
 from langgraph.types import interrupt
+from ..util import convert_to_documents
 
 def select_paper_node(state: GraphState):
     """
@@ -20,7 +21,7 @@ def select_paper_node(state: GraphState):
 
     paper_info = mock_db_select(query)
     print(f"paper_info: {paper_info}")
-    
+
     if not state.get("is_chat_mode"):
         value = interrupt({"paper_info": paper_info})
 
@@ -70,19 +71,22 @@ def insert_paper_node(state: GraphState):
 def retrieve_and_select_node(state: GraphState):
     """:param state: The current graph state. :return: New state with retrieved documents."""
     print("\n--- 노드 실행: retrieve_and_select_node ---")
-    sbp_title = state["sbp_title"]
     
-    retrieved_docs = mock_rag_retrieval(sbp_title)
-    db_follow_up_docs = mock_db_follow_up_select(sbp_title)
-    
-    all_docs = retrieved_docs + db_follow_up_docs
+    # retrieved_docs = mock_rag_retrieval(sbp_title)
+    paper_info = state["paper_search_result"]
+    query_vec = get_emb(get_emb_model(), [state["question"]])[0]
+    k = 10
+    db_follow_up_docs = mock_db_follow_up_select(paper_info, query_vec, k)
+
+    all_docs = convert_to_documents(db_follow_up_docs)
     return {"retrieved_docs": all_docs}
 
 def generate_answer_node(state: GraphState):
     """:param state: The current graph state. :return: New state with the final answer."""
     print("\n--- 노드 실행: generate_answer_node ---")
+    question = state["question"]
     context = state["retrieved_docs"]
-    answer = mock_llm_generate(context)
+    answer = mock_llm_generate(question, context, llm_api_key = "up_5InQ6X4BcFE1rBXENeVywmNZnIFC1")
     return {"answer": answer}
 
 def should_search_web(state: GraphState) -> str:

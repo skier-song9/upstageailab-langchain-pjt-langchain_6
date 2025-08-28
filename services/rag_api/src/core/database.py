@@ -110,15 +110,37 @@ def mock_db_follow_up_select(paper_info: dict, query_vec: list[float], k: int) -
                 return []
 
             cur.execute("""
-                SELECT p.openalex_id, p.title, p.published, p.embedding <=> %s AS dist
-                FROM papers p
-                JOIN citations c ON c.citing_openalex_id = p.openalex_id
-                WHERE c.cited_openalex_id = ANY(%s)
-                ORDER BY dist
-                LIMIT %s
-            """, (query_vec, ids, k))
-            rows = cur.fetchall()
+                        WITH RankedPapers AS (
+                            SELECT
+                                p.openalex_id,
+                                p.title,
+                                p.published,
+                                p.abstract,
+                                p.pdf_url,
+                                p.authors,
+                                p.cited_by_count,
+                                p.embedding <=> %s AS dist,
+                                ROW_NUMBER() OVER(PARTITION BY p.title ORDER BY LENGTH(p.abstract) DESC) AS rn
+                            FROM papers p
+                            JOIN citations c ON c.citing_openalex_id = p.openalex_id
+                            WHERE c.cited_openalex_id = ANY(%s)
+                        )
+                        SELECT
+                            openalex_id,
+                            title,
+                            published,
+                            abstract,
+                            pdf_url,
+                            authors,
+                            cited_by_count,
+                            dist
+                        FROM RankedPapers
+                        WHERE rn = 1
+                        ORDER BY dist
+                        LIMIT %s
+                        """, (query_vec, ids, k))
 
+            rows = cur.fetchall()
             return rows
 
     finally:
