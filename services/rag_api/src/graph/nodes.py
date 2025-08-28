@@ -1,7 +1,7 @@
 from .state import GraphState
 from ..core.database import mock_db_select, mock_db_insert, mock_db_follow_up_select
 from ..core.source_api import openalex_search
-from ..core.retriever import mock_rag_retrieval, augment_prompt
+from ..core.retriever import UPSTAGE_API_KEY, TAVILY_SEARCH, augment_prompt
 from ..core.llm import mock_llm_generate
 from ..core.get_emb import get_emb_model, get_emb
 from langgraph.types import interrupt
@@ -71,8 +71,12 @@ def insert_paper_node(state: GraphState):
 def retrieve_and_select_node(state: GraphState):
     """:param state: The current graph state. :return: New state with retrieved documents."""
     print("\n--- 노드 실행: retrieve_and_select_node ---")
-    
-    # retrieved_docs = mock_rag_retrieval(sbp_title)
+    use_prompt_augment = True
+    if use_prompt_augment:
+        ### prompt에서 키워드를 찾아 tavily search로 증강하고, 영어로 번역하는 함수.
+        augmented_question = augment_prompt(state['question'], UPSTAGE_API_KEY, TAVILY_SEARCH)
+        state['question'] = augmented_question # update state 
+
     paper_info = state["paper_search_result"]
     query_vec = get_emb(get_emb_model(), [state["question"]])[0]
     k = 10
