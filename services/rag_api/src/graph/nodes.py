@@ -1,7 +1,7 @@
 from .state import GraphState
 from ..core.database import mock_db_select, mock_db_insert, mock_db_follow_up_select
 from ..core.source_api import openalex_search
-from ..core.retriever import mock_rag_retrieval
+from ..core.retriever import mock_rag_retrieval, augment_prompt
 from ..core.llm import mock_llm_generate
 from ..core.get_emb import get_emb_model, get_emb
 from langgraph.types import interrupt
@@ -72,6 +72,7 @@ def retrieve_and_select_node(state: GraphState):
     print("\n--- 노드 실행: retrieve_and_select_node ---")
     sbp_title = state["sbp_title"]
     
+    augmented_prompt = augment_prompt(state['question'])
     retrieved_docs = mock_rag_retrieval(sbp_title)
     db_follow_up_docs = mock_db_follow_up_select(sbp_title)
     

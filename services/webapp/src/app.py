@@ -133,26 +133,26 @@ def start_phase1(paper_query: str):
             phase2_ui_container: gr.update(visible=False)
         }
 
-    paper_info = mock_phase1_api_call(paper_query)
+    # paper_info = mock_phase1_api_call(paper_query)
     
-    ### test를 위해 return True
-    sbp_title = "Attention is all you need."
-    return {
-        searched_paper_state: sbp_title,
-        searched_paper_output: gr.update(
-            value=f"✅ **Found Paper:** {sbp_title}\n\n이제 아래 채팅창에서 후속 연구에 대해 질문할 수 있습니다.", 
-            visible=True
-        ),
-        # [수정됨] Phase 2 전체 UI 컨테이너를 보이게 함
-        phase2_ui_container: gr.update(visible=True)
-    }
+    # ### test를 위해 return True
+    # sbp_title = "Attention is all you need."
+    # return {
+    #     searched_paper_state: sbp_title,
+    #     searched_paper_output: gr.update(
+    #         value=f"✅ **Found Paper:** {sbp_title}\n\n이제 아래 채팅창에서 후속 연구에 대해 질문할 수 있습니다.", 
+    #         visible=True
+    #     ),
+    #     # [수정됨] Phase 2 전체 UI 컨테이너를 보이게 함
+    #     phase2_ui_container: gr.update(visible=True)
+    # }
 
 
-def start_phase2(message: str, history: list, thread_id: str, sbp_title: str):
+def start_phase2(message: str, history: str, thread_id: str, sbp_title: str):
     """
     ChatInterface에서 채팅 입력 시 실행되어 Phase 2를 시작하는 함수입니다.
-    :param message: 사용자가 입력한 메시지 (질문)
-    :param history: 현재까지의 대화 기록
+    :param message: 사용자가 입력한 메시지 (ChatInterface에 의해 자동으로 전달)
+    :param history: 현재까지의 대화 기록 (ChatInterface에 의해 자동으로 전달)
     :param sbp_title: Phase 1에서 검색되어 'searched_paper_state'에 저장된 논문 제목
     :return: 챗봇의 스트리밍 응답
     """
@@ -162,7 +162,7 @@ def start_phase2(message: str, history: list, thread_id: str, sbp_title: str):
     try: 
         response = requests.post(
             f"{RAG_API_URL}/start_phase2",
-            json={"thread_id": thread_id, "question": message, "sbp_title": sbp_title},
+            json={"thread_id": thread_id, "question": message, "sbp_title": sbp_title, "history": history},
             stream=True
         )
         response.raise_for_status()

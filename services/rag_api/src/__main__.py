@@ -28,6 +28,7 @@ class Phase2Request(BaseModel):
     thread_id: str
     question: str
     sbp_title: str
+    history: str
 
 @app.get("/")
 async def root():
@@ -71,16 +72,16 @@ async def start_phase1(request: Phase1Request):
           'sbp_title': sbp_title,
         }
     
-    state = app_builder.get_state(config)
-    final_state = state.values      
-    print(f"values: {final_state}")
-    # state 에서 필요한 정보를 추출하여 클라이언트에 응답 > select_paper node 종료 이후의 GraphState를 가져온다.
+    # state = app_builder.get_state(config)
+    # final_state = state.values      
+    # print(f"values: {final_state}")
+    # # state 에서 필요한 정보를 추출하여 클라이언트에 응답 > select_paper node 종료 이후의 GraphState를 가져온다.
     
-    return {
-        'thread_id': thread_id,
-        'sbp_found': final_state.get("sbp_found", False),
-        'sbp_title': final_state.get('sbp_title', "Paper Not Found."),
-    }
+    # return {
+    #     'thread_id': thread_id,
+    #     'sbp_found': final_state.get("sbp_found", False),
+    #     'sbp_title': final_state.get('sbp_title', "Paper Not Found."),
+    # }
 
 @app.post("/phase1_retry")
 async def phase1_retry(request: Phase1Request):
@@ -130,9 +131,12 @@ async def phase1_retry(request: Phase1Request):
 async def start_phase2(request: Phase2Request):
     """중단된 워크플로우를 이어받아 Phase 2를 실행하고, 최종 답변을 스트리밍으로 반환합니다.
 
-    :param Phase2Request request: _description_
+    :param Phase2Request request: question(=message), history, thread_id, sbp_title 을 전달받는다.
     """
     config = RunnableConfig(configurable={"thread_id": request.thread_id})
+
+    print("⚙️check history: ", request.history)
+
     async def stream_generator():
         # .stream()을 None 입력으로 호출하여 중단된 지점부터 실행 재개
 
