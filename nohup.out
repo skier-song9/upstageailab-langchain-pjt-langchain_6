@@ -1,0 +1,30 @@
+* Running on local URL:  http://127.0.0.1:7860
+2025-08-27 22:50:58,058 - httpx - INFO - HTTP Request: GET http://127.0.0.1:7860/gradio_api/startup-events "HTTP/1.1 200 OK"
+2025-08-27 22:50:58,072 - httpx - INFO - HTTP Request: HEAD http://127.0.0.1:7860/ "HTTP/1.1 200 OK"
+* To create a public link, set `share=True` in `launch()`.
+2025-08-27 22:50:58,521 - httpx - INFO - HTTP Request: GET https://api.gradio.app/pkg-version "HTTP/1.1 200 OK"
+2025-08-27 22:50:58,563 - httpx - INFO - HTTP Request: GET https://api.gradio.app/pkg-version "HTTP/1.1 200 OK"
+2025-08-27 22:51:14,744 - root - INFO - response: <Response [200]>
+2025-08-27 22:51:14,744 - root - INFO - thread_id: 8d5c71e0-2233-42c0-ab10-29dcf16b3387 sbp_found: False sbp_title: 
+Keyboard interruption in main thread... closing server.
+Traceback (most recent call last):
+  File "/opt/conda/lib/python3.10/site-packages/gradio/blocks.py", line 3107, in block_thread
+    time.sleep(0.1)
+KeyboardInterrupt
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/root/upstageailab-langchain-pjt-langchain_6/services/webapp/src/app.py", line 240, in <module>
+    if __name__ == "__main__":
+  File "/opt/conda/lib/python3.10/site-packages/gradio/blocks.py", line 3013, in launch
+    self.block_thread()
+  File "/opt/conda/lib/python3.10/site-packages/gradio/blocks.py", line 3111, in block_thread
+    self.server.close()
+  File "/opt/conda/lib/python3.10/site-packages/gradio/http_server.py", line 69, in close
+    self.thread.join(timeout=5)
+  File "/opt/conda/lib/python3.10/threading.py", line 1100, in join
+    self._wait_for_tstate_lock(timeout=max(timeout, 0))
+  File "/opt/conda/lib/python3.10/threading.py", line 1116, in _wait_for_tstate_lock
+    if lock.acquire(block, timeout):
+KeyboardInterrupt

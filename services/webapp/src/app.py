@@ -4,9 +4,20 @@ from dotenv import load_dotenv
 import os
 import requests
 import json
+import logging
+import sys
 
-load_dotenv(dotenv_path="../../../.env", overried=True)
-RAG_API_URL = os.getenv("RAG_API_URL", "https://www.google.com/url?sa=E&source=gmail&q=http://127.0.0.1:8000")
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler("app.log"), # 로그 파일을 지정
+        logging.StreamHandler(sys.stdout) # 표준 출력으로도 보내기
+    ]
+)
+
+load_dotenv(dotenv_path="../../../.env", override=True)
+RAG_API_URL = os.getenv("RAG_API_URL", "http://localhost:8000")
 
 # --- Mock API Functions (향후 실제 rag-api 호출 코드로 대체) ---
 
@@ -64,15 +75,19 @@ def start_phase1(paper_query: str):
     :return: Phase 1 결과에 따라 업데이트될 UI 컴포넌트들의 값
     """
     try:
-        response = requests.post(f"{RAG_API_URL}", json={"query": paper_query})
+        response = requests.post(f"{RAG_API_URL}/start_phase1", json={"query": paper_query})
+        logging.info(f"response: {response}")
         response.raise_for_status() # HTTP 오류 발생 시 예외 발생
         result = response.json()
+        logging.info(f"result: {result}")
         thread_id = result.get("thread_id")
         sbp_found = result.get("sbp_found")
         sbp_title = result.get("sbp_title")
+
+        logging.info(f"thread_id: {thread_id} sbp_found: {sbp_found} sbp_title: {sbp_title}")
         
         if sbp_found:
-            return {
+            yield {
                 thread_id_state: thread_id,
                 searched_paper_state: sbp_title,
                 searched_paper_output: gr.update(
@@ -82,19 +97,36 @@ def start_phase1(paper_query: str):
                 phase2_ui_container: gr.update(visible=True)
             }
         else:
-            return {
+          
+            yield {
                 thread_id_state: "",
                 searched_paper_state: "",
                 searched_paper_output: gr.update(
-                    value=f"❌ **Paper Not Found:** '{paper_query}'\n\nDB에 해당 논문이 없습니다.", 
+                    value=f"❌ **Paper Not Found:** '{paper_query}'\n\nDB에 해당 논문이 없습니다. 재검색합니다.", 
                     visible=True
                 ),
                 phase2_ui_container: gr.update(visible=False)
             }
+            response = requests.post(f"{RAG_API_URL}/phase1_retry", json={"query": paper_query, "thread_id": thread_id})
+            response.raise_for_status()
+            result = response.json()
+            thread_id = result.get("thread_id")
+            sbp_found = result.get("sbp_found")
+            sbp_title = result.get("sbp_title")
+
+            yield {
+                thread_id_state: thread_id,
+                searched_paper_state: sbp_title,
+                searched_paper_output: gr.update(
+                    value=f"✅ **Found Paper:** {sbp_title}\n\n이제 아래 채팅창에서 후속 연구에 대해 질문할 수 있습니다.", 
+                    visible=True
+                ),
+                phase2_ui_container: gr.update(visible=True)
+            }
     except requests.exceptions.RequestException as e:
         error_message = f"API 호출 오류: {e}"
         print(error_message)
-        return {
+        yield {
             thread_id_state: "",
             searched_paper_state: "",
             searched_paper_output: gr.update(value=error_message, visible=True),
@@ -130,7 +162,7 @@ def start_phase2(message: str, history: list, thread_id: str, sbp_title: str):
     try: 
         response = requests.post(
             f"{RAG_API_URL}/start_phase2",
-            json={"thread_id": thread_id, "question": message, "sbp_title": sbp_title}
+            json={"thread_id": thread_id, "question": message, "sbp_title": sbp_title},
             stream=True
         )
         response.raise_for_status()
@@ -171,6 +203,7 @@ with gr.Blocks(theme=gr.themes.Soft(), title="Paper Follow-up Researcher") as de
                 info="탐색을 시작할 기준 논문의 제목을 입력하세요."
             )
             search_button = gr.Button("🔍 Search Paper")
+            
             searched_paper_output = gr.Markdown(visible=False)
 
         with gr.Column(scale=2):
@@ -181,7 +214,7 @@ with gr.Blocks(theme=gr.themes.Soft(), title="Paper Follow-up Researcher") as de
                 # [수정됨] ChatInterface에서 visible, interactive 인자 제거
                 chat_interface = gr.ChatInterface(
                     fn=start_phase2,
-                    additional_inputs=[searched_paper_state],
+                    additional_inputs=[thread_id_state, searched_paper_state],
                     type='messages',
                 )
                 example_prompts = gr.Examples(

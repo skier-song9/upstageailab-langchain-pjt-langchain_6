@@ -72,7 +72,7 @@ def get_conn() -> PGConnection:
     PostgreSQL 커넥션 생성 + pgvector 어댑터 등록.
     """
 
-    PGHOST = os.getenv("PGHOST", "/var/run/postgresql")
+    PGHOST = os.getenv("PGHOST", "localhost")
     PGPORT = int(os.getenv("PGPORT", "5432"))
     PGUSER = os.getenv("PGUSER", "postgres")
     PGPASSWORD = os.getenv("PGPASSWORD", "postgres")

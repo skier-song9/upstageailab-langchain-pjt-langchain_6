@@ -4,6 +4,7 @@ from ..core.source_api import openalex_search
 from ..core.retriever import mock_rag_retrieval
 from ..core.llm import mock_llm_generate
 from ..core.get_emb import get_emb_model, get_emb
+from langgraph.types import interrupt
 
 def select_paper_node(state: GraphState):
     """
@@ -16,13 +17,24 @@ def select_paper_node(state: GraphState):
     """
     print("\n--- 노드 실행: select_paper_node ---")
     query = state["initial_query"]
-    paper_info = mock_db_select(query)
-    
 
-    if paper_info and paper_info["is_sbp"]:
-        return {"sbp_found": True, "sbp_title": paper_info["paper_meta"]["title"], "paper_search_result": paper_info["paper_meta"]}
+    paper_info = mock_db_select(query)
+    print(f"paper_info: {paper_info}")
+    
+    if not state.get("is_chat_mode"):
+        value = interrupt({"paper_info": paper_info})
+
+        if paper_info and paper_info["is_sbp"]:
+            return {"sbp_found": True, "sbp_title": paper_info["paper_meta"]["title"], "paper_search_result": paper_info["paper_meta"]}
+        else:
+            return {"sbp_found": False, "sbp_title": ""}
     else:
-        return {"sbp_found": False, "sbp_title": ""}
+        return {"paper_search_result": paper_info["paper_meta"]}
+
+    # if paper_info and paper_info["is_sbp"]:
+    #     return {"sbp_found": True, "sbp_title": paper_info["paper_meta"]["title"], "paper_search_result": paper_info["paper_meta"]}
+    # else:
+    #     return {"sbp_found": False, "sbp_title": ""}
 
 def web_search_node(state: GraphState):
     """
@@ -48,7 +60,7 @@ def insert_paper_node(state: GraphState):
     # 논문 초록 임베딩
     emb_model = get_emb_model()
     embedding = get_emb(emb_model, [paper_info["abstract"]])
-    paper_info["embedding"] = embedding
+    paper_info["embedding"] = embedding[0]
 
     if paper_info:
         mock_db_insert(paper_info)
