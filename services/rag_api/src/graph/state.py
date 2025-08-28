@@ -1,4 +1,5 @@
-from typing import TypedDict, List
+from typing import TypedDict, List, Annotated
+from langgraph.graph.message import add_messages
 
 class GraphState(TypedDict):
     """Represents the state of our graph."""
@@ -11,7 +12,8 @@ class GraphState(TypedDict):
     ### 김정빈 ###
     paper_search_result: dict | None
     is_chat_mode: bool
-    
+    rag_judgement: str
+    messages: Annotated[list, add_messages]
     ### 송규헌 ###
     thread_id: str # 각 대화 세션을 식별하는 ID
     question: str # Phase 2 에서 사용자가 입력한 프롬프트
