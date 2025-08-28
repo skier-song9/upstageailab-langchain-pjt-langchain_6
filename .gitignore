@@ -192,3 +192,4 @@ pgdata/
 .langsmith/
 .huggingface_cache/
 
+nohup.out
