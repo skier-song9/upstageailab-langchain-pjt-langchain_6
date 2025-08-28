@@ -16,15 +16,21 @@ from db.db_init import get_conn
 def mock_db_select(paper_title: str) -> dict | None:
     print(f"📄 DB 조회: '{paper_title}'")
 
-    conn = get_conn()
-    register_vector(conn)
+    try:
+        conn = get_conn()
+        register_vector(conn)
+
+        print(f"DB 연결 성공")
+    except Exception as e:
+        print(f"DB 연결 실패: {e}")
+        return None
 
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute("""
                 SELECT *
                 FROM papers
-                WHERE title = %s
+                WHERE title ilike %s
                 LIMIT 1
             """, (paper_title,))
             row = cur.fetchone()

@@ -13,7 +13,7 @@ from .nodes import (
 from ..core.get_emb import get_emb_model
 
 def build_graph():
-    checkpointer = MemorySaver
+    checkpointer = MemorySaver()
     workflow = StateGraph(GraphState)
 
     workflow.add_node("select_paper", select_paper_node)
@@ -42,6 +42,6 @@ def build_graph():
 
     # Checkpointer와 함께 그래프를 컴파일하고, select_paper 이후에 중단점을 설정합니다.
     return workflow.compile(
-        checkpointer=checkpointer,
-        interrupt_after=["select_paper"] # select_paper 노드 실행 후 사용자 입력을 위해 대기
+        checkpointer=checkpointer
+        # interrupt_after=["select_paper"] # select_paper 노드 실행 후 사용자 입력을 위해 대기
     )

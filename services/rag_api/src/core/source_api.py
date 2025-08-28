@@ -42,7 +42,8 @@ def openalex_search(paper_title: str) -> dict | None:
   if not r:
     return None
 
-  paper = r[0]  
+  paper = r[0]
+  print(f"paper referenced_works: {paper['referenced_works']}")  
   paper_info = {
     "openalex_id": paper["id"].split("/")[-1],
     "title": paper["display_name"],
@@ -52,7 +53,7 @@ def openalex_search(paper_title: str) -> dict | None:
     "pdf_url": (paper.get("primary_location") or {}).get("pdf_url"),
     "abstract": reconstruct_abstract(paper["abstract_inverted_index"]),
     "authors": ", ".join([a["author"]["display_name"] for a in paper["authorships"]]),
-    "cited_papers": [ref["referenced_works"].split("/")[-1] for ref in paper["referenced_works"]],
+    "cited_papers": [ref.split("/")[-1] for ref in paper["referenced_works"]],
   }
 
   return paper_info
