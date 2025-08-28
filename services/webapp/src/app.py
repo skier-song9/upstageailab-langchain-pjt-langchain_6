@@ -166,7 +166,8 @@ def start_phase2(message: str, history: str, thread_id: str, sbp_title: str):
             stream=True
         )
         response.raise_for_status()
-        full_response = ""
+        
+        # for문을 통해 스트림 응답을 처리합니다.
         for line in response.iter_lines():
             if line:
                 decoded_line = line.decode('utf-8')
@@ -174,10 +175,9 @@ def start_phase2(message: str, history: str, thread_id: str, sbp_title: str):
                     try:
                         data_str = decoded_line[len('data:'):]
                         data = json.loads(data_str)
-                        # 현재는 전체 답변을 한 번에 보내므로, 그대로 사용합니다.
-                        # LangGraph에서 청크 단위 스트리밍 시, 이 부분을 수정해야 합니다.
-                        full_response = data.get("answer_chunk", "")
-                        yield full_response
+                        # RAG 서버의 스트리밍 청크를 직접 Gradio에 yield합니다.
+                        answer_chunk = data.get("answer_chunk", "")
+                        yield answer_chunk
                     except json.JSONDecodeError:
                         print(f"JSON 디코딩 오류: {decoded_line}")
                         continue

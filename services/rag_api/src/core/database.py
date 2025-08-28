@@ -135,15 +135,37 @@ def mock_db_follow_up_select(paper_info: dict, query_vec: list[float], k: int) -
             # 2. 후속 연구 ID 리스트를 사용하여, 해당 논문들 중에서 사용자 질문 벡터와 코사인 유사도가 가장 높은 상위 k개를 검색
             # (<=> 연산자는 pgvector에서 코사인 거리를 계산함)
             cur.execute("""
-                SELECT p.openalex_id, p.title, p.published, p.abstract, p.embedding <=> %s AS dist
-                FROM papers p
-                JOIN citations c ON c.citing_openalex_id = p.openalex_id
-                WHERE c.cited_openalex_id = ANY(%s)
-                ORDER BY dist
-                LIMIT %s
-            """, (query_vec, ids, k))
-            rows = cur.fetchall()
+                        WITH RankedPapers AS (
+                            SELECT
+                                p.openalex_id,
+                                p.title,
+                                p.published,
+                                p.abstract,
+                                p.pdf_url,
+                                p.authors,
+                                p.cited_by_count,
+                                p.embedding <=> %s AS dist,
+                                ROW_NUMBER() OVER(PARTITION BY p.title ORDER BY LENGTH(p.abstract) DESC) AS rn
+                            FROM papers p
+                            JOIN citations c ON c.citing_openalex_id = p.openalex_id
+                            WHERE c.cited_openalex_id = ANY(%s)
+                        )
+                        SELECT
+                            openalex_id,
+                            title,
+                            published,
+                            abstract,
+                            pdf_url,
+                            authors,
+                            cited_by_count,
+                            dist
+                        FROM RankedPapers
+                        WHERE rn = 1
+                        ORDER BY dist
+                        LIMIT %s
+                        """, (query_vec, ids, k))
 
+            rows = cur.fetchall()
             return rows
 
     finally:

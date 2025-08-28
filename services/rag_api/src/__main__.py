@@ -46,7 +46,6 @@ async def start_phase1(request: Phase1Request):
     thread_id = str(uuid.uuid4())
     config = RunnableConfig(configurable={"thread_id":thread_id})
     inputs = {"initial_query":request.query, "thread_id": thread_id, "is_chat_mode": False}
-    print(f"\nthread_id: {thread_id}")
 
     # .astream()을 사용하여 그래프를 실행하고 중단점까지의 결과를 수집
     for event in app_builder.stream(inputs, config = config):
@@ -54,7 +53,6 @@ async def start_phase1(request: Phase1Request):
             interrupt_obj = event['__interrupt__'][0]
             value_dict = interrupt_obj.value
             paper_info = value_dict.get("paper_info", None)
-            print(f"value_dict: {value_dict}")
     
     if paper_info is None:
         return {
@@ -133,6 +131,7 @@ async def start_phase2(request: Phase2Request):
 
     :param Phase2Request request: question(=message), history, thread_id, sbp_title 을 전달받는다.
     """
+    print(f"\n start_phase2 호출\n")
     config = RunnableConfig(configurable={"thread_id": request.thread_id})
 
     print("⚙️check history: ", request.history)
@@ -149,7 +148,7 @@ async def start_phase2(request: Phase2Request):
           "thread_id": request.thread_id,
         }
         for event in app_builder.stream(
-            inputs, config, stream_mode="values"
+            inputs, config, stream_mode="updates"
         ):
             if "generate_answer" in event:
                 answer_chunk = event["generate_answer"]["answer"]

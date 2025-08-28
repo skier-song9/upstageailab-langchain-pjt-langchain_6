@@ -191,5 +191,4 @@ pgdata/
 .langchain/
 .langsmith/
 .huggingface_cache/
-
-nohup.out
+.out
