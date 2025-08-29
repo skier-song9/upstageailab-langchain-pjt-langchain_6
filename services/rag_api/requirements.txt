@@ -1,0 +1,42 @@
+wandb
+tqdm
+torch==2.6.0
+torchvision==0.21.0
+torchaudio==2.6.0
+
+pytorch_lightning==2.5.2
+transformers==4.54.0
+jupyter
+jupyterlab
+unsloth
+python-dotenv
+nltk
+scipy
+kiwipiepy==0.21.0
+datasets
+optuna
+openai
+
+matplotlib
+seaborn
+# 먼저 apt install graphviz를 해야 한다.
+# conda install pygraphviz 해야 한다.
+# pygraphviz
+
+vllm
+
+langchain
+langchain-openai
+langchain-community
+langchain-experimental
+langgraph
+langsmith
+langserve[all]
+langchain-teddynote
+tavily-python
+langchain_tavily
+
+gradio
+streamlit
+fastapi
+requests

@@ -1,0 +1,7 @@
+gradio
+requests
+
+gunicorn
+uvicorn
+
+python-dotenv
